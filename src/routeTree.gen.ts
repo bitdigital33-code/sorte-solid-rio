@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResultadoRouteImport } from './routes/resultado'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as PagamentoOrderIdRouteImport } from './routes/pagamento.$orderId'
 import { Route as ComprovanteTokenRouteImport } from './routes/comprovante.$token'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
 
 const ResultadoRoute = ResultadoRouteImport.update({
   id: '/resultado',
@@ -30,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PagamentoOrderIdRoute = PagamentoOrderIdRouteImport.update({
   id: '/pagamento/$orderId',
   path: '/pagamento/$orderId',
@@ -40,28 +47,39 @@ const ComprovanteTokenRoute = ComprovanteTokenRouteImport.update({
   path: '/comprovante/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
   '/resultado': typeof ResultadoRoute
+  '/admin/login': typeof AdminLoginRoute
   '/comprovante/$token': typeof ComprovanteTokenRoute
   '/pagamento/$orderId': typeof PagamentoOrderIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
   '/resultado': typeof ResultadoRoute
+  '/admin/login': typeof AdminLoginRoute
   '/comprovante/$token': typeof ComprovanteTokenRoute
   '/pagamento/$orderId': typeof PagamentoOrderIdRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
   '/resultado': typeof ResultadoRoute
+  '/admin/login': typeof AdminLoginRoute
   '/comprovante/$token': typeof ComprovanteTokenRoute
   '/pagamento/$orderId': typeof PagamentoOrderIdRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -69,30 +87,38 @@ export interface FileRouteTypes {
     | '/'
     | '/checkout'
     | '/resultado'
+    | '/admin/login'
     | '/comprovante/$token'
     | '/pagamento/$orderId'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/checkout'
     | '/resultado'
+    | '/admin/login'
     | '/comprovante/$token'
     | '/pagamento/$orderId'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/checkout'
     | '/resultado'
+    | '/admin/login'
     | '/comprovante/$token'
     | '/pagamento/$orderId'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CheckoutRoute: typeof CheckoutRoute
   ResultadoRoute: typeof ResultadoRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   ComprovanteTokenRoute: typeof ComprovanteTokenRoute
   PagamentoOrderIdRoute: typeof PagamentoOrderIdRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -118,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pagamento/$orderId': {
       id: '/pagamento/$orderId'
       path: '/pagamento/$orderId'
@@ -132,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComprovanteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -139,8 +179,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CheckoutRoute: CheckoutRoute,
   ResultadoRoute: ResultadoRoute,
+  AdminLoginRoute: AdminLoginRoute,
   ComprovanteTokenRoute: ComprovanteTokenRoute,
   PagamentoOrderIdRoute: PagamentoOrderIdRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
