@@ -14,16 +14,245 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_log: {
+        Row: {
+          acao: string
+          created_at: string
+          detalhes: Json | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      draw_result: {
+        Row: {
+          executado_em: string
+          fonte_seed: string
+          id: string
+          numero_sorteado: number
+          order_id_vencedor: string | null
+          publicado: boolean
+          seed: string
+          vencedor_nome: string | null
+          video_url: string | null
+        }
+        Insert: {
+          executado_em?: string
+          fonte_seed: string
+          id?: string
+          numero_sorteado: number
+          order_id_vencedor?: string | null
+          publicado?: boolean
+          seed: string
+          vencedor_nome?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          executado_em?: string
+          fonte_seed?: string
+          id?: string
+          numero_sorteado?: number
+          order_id_vencedor?: string | null
+          publicado?: boolean
+          seed?: string
+          vencedor_nome?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draw_result_order_id_vencedor_fkey"
+            columns: ["order_id_vencedor"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          codigo: string
+          comprador_nome: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          cpf_hash: string
+          cpf_mascarado: string
+          created_at: string
+          email: string
+          id: string
+          pix_payload: string | null
+          qtd_cotas: number
+          share_token: string
+          status: string
+          telefone: string
+          valor_total_centavos: number
+        }
+        Insert: {
+          codigo: string
+          comprador_nome: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          cpf_hash: string
+          cpf_mascarado: string
+          created_at?: string
+          email: string
+          id?: string
+          pix_payload?: string | null
+          qtd_cotas: number
+          share_token?: string
+          status?: string
+          telefone: string
+          valor_total_centavos: number
+        }
+        Update: {
+          codigo?: string
+          comprador_nome?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          cpf_hash?: string
+          cpf_mascarado?: string
+          created_at?: string
+          email?: string
+          id?: string
+          pix_payload?: string | null
+          qtd_cotas?: number
+          share_token?: string
+          status?: string
+          telefone?: string
+          valor_total_centavos?: number
+        }
+        Relationships: []
+      }
+      raffle_config: {
+        Row: {
+          created_at: string
+          data_sorteio: string
+          descricao: string | null
+          id: string
+          imagem_url: string | null
+          nome: string
+          pix_cidade: string | null
+          pix_key: string | null
+          pix_nome: string | null
+          premio: string
+          status: string
+          total_cotas: number
+          updated_at: string
+          valor_cota_centavos: number
+        }
+        Insert: {
+          created_at?: string
+          data_sorteio?: string
+          descricao?: string | null
+          id?: string
+          imagem_url?: string | null
+          nome?: string
+          pix_cidade?: string | null
+          pix_key?: string | null
+          pix_nome?: string | null
+          premio?: string
+          status?: string
+          total_cotas?: number
+          updated_at?: string
+          valor_cota_centavos?: number
+        }
+        Update: {
+          created_at?: string
+          data_sorteio?: string
+          descricao?: string | null
+          id?: string
+          imagem_url?: string | null
+          nome?: string
+          pix_cidade?: string | null
+          pix_key?: string | null
+          pix_nome?: string | null
+          premio?: string
+          status?: string
+          total_cotas?: number
+          updated_at?: string
+          valor_cota_centavos?: number
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          created_at: string
+          id: string
+          numero: number
+          order_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          numero: number
+          order_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          numero?: number
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      confirm_order: { Args: { _order_id: string }; Returns: undefined }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +379,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin"],
+    },
   },
 } as const
