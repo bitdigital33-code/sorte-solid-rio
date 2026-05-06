@@ -9,38 +9,108 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResultadoRouteImport } from './routes/resultado'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PagamentoOrderIdRouteImport } from './routes/pagamento.$orderId'
+import { Route as ComprovanteTokenRouteImport } from './routes/comprovante.$token'
 
+const ResultadoRoute = ResultadoRouteImport.update({
+  id: '/resultado',
+  path: '/resultado',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PagamentoOrderIdRoute = PagamentoOrderIdRouteImport.update({
+  id: '/pagamento/$orderId',
+  path: '/pagamento/$orderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComprovanteTokenRoute = ComprovanteTokenRouteImport.update({
+  id: '/comprovante/$token',
+  path: '/comprovante/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/checkout': typeof CheckoutRoute
+  '/resultado': typeof ResultadoRoute
+  '/comprovante/$token': typeof ComprovanteTokenRoute
+  '/pagamento/$orderId': typeof PagamentoOrderIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/checkout': typeof CheckoutRoute
+  '/resultado': typeof ResultadoRoute
+  '/comprovante/$token': typeof ComprovanteTokenRoute
+  '/pagamento/$orderId': typeof PagamentoOrderIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/checkout': typeof CheckoutRoute
+  '/resultado': typeof ResultadoRoute
+  '/comprovante/$token': typeof ComprovanteTokenRoute
+  '/pagamento/$orderId': typeof PagamentoOrderIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/checkout'
+    | '/resultado'
+    | '/comprovante/$token'
+    | '/pagamento/$orderId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/checkout'
+    | '/resultado'
+    | '/comprovante/$token'
+    | '/pagamento/$orderId'
+  id:
+    | '__root__'
+    | '/'
+    | '/checkout'
+    | '/resultado'
+    | '/comprovante/$token'
+    | '/pagamento/$orderId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CheckoutRoute: typeof CheckoutRoute
+  ResultadoRoute: typeof ResultadoRoute
+  ComprovanteTokenRoute: typeof ComprovanteTokenRoute
+  PagamentoOrderIdRoute: typeof PagamentoOrderIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resultado': {
+      id: '/resultado'
+      path: '/resultado'
+      fullPath: '/resultado'
+      preLoaderRoute: typeof ResultadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,12 +118,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pagamento/$orderId': {
+      id: '/pagamento/$orderId'
+      path: '/pagamento/$orderId'
+      fullPath: '/pagamento/$orderId'
+      preLoaderRoute: typeof PagamentoOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/comprovante/$token': {
+      id: '/comprovante/$token'
+      path: '/comprovante/$token'
+      fullPath: '/comprovante/$token'
+      preLoaderRoute: typeof ComprovanteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CheckoutRoute: CheckoutRoute,
+  ResultadoRoute: ResultadoRoute,
+  ComprovanteTokenRoute: ComprovanteTokenRoute,
+  PagamentoOrderIdRoute: PagamentoOrderIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
