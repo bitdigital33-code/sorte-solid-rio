@@ -81,7 +81,7 @@ function CheckoutPage() {
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Link>
 
-        <h1 className="text-3xl font-bold mb-2">Seus dados</h1>
+        <h1 className="text-3xl font-bold mb-2">Seus dados para concorrer a cesta</h1>
         <p className="text-muted-foreground mb-8">
           Preencha para gerar seu PIX.
         </p>
