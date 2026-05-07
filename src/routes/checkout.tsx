@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -36,7 +35,6 @@ function CheckoutPage() {
   const [cpf, setCpf] = useState("");
   const [tel, setTel] = useState("");
   const [email, setEmail] = useState("");
-  const [accept, setAccept] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -53,7 +51,6 @@ function CheckoutPage() {
     if (!isValidCPF(cpf)) return toast.error("CPF inválido");
     if (tel.replace(/\D/g, "").length < 10) return toast.error("Telefone inválido");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("E-mail inválido");
-    if (!accept) return toast.error("Aceite os termos para continuar");
     if (!config) return;
 
     setLoading(true);
@@ -131,14 +128,6 @@ function CheckoutPage() {
                   required
                 />
               </div>
-
-              <label className="flex items-start gap-3 text-sm cursor-pointer pt-2">
-                <Checkbox checked={accept} onCheckedChange={(v) => setAccept(!!v)} className="mt-0.5" />
-                <span className="text-muted-foreground">
-                  Li e aceito que meus dados sejam usados para identificação da compra e contato em caso de prêmio,
-                  conforme a Lei Geral de Proteção de Dados (LGPD).
-                </span>
-              </label>
 
               <Button type="submit" size="lg" className="w-full h-12" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
