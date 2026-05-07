@@ -40,6 +40,7 @@ import {
   UserCog,
   X,
 } from "lucide-react";
+import { ReportsPanel } from "@/components/admin/reports-panel";
 import { formatBRL } from "@/lib/raffle-utils";
 import { adminApi, type TicketCandidate } from "@/lib/api";
 
@@ -86,17 +87,23 @@ function AdminDashboard() {
     setLoading(false);
   }
 
-  if (!authChecked) return <div className="min-h-screen flex items-center justify-center">Verificando…</div>;
+  if (!authChecked)
+    return <div className="min-h-screen flex items-center justify-center">Verificando…</div>;
 
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
         <h1 className="text-2xl font-bold">Acesso não autorizado</h1>
         <p className="text-muted-foreground max-w-md">
-          Sua conta ({userId?.slice(0, 8)}…) não tem perfil de administrador.
-          Adicione esta conta como admin no banco para acessar.
+          Sua conta ({userId?.slice(0, 8)}…) não tem perfil de administrador. Adicione esta conta
+          como admin no banco para acessar.
         </p>
-        <Button onClick={() => { adminApi.logout(); navigate({ to: "/admin/login" }); }}>
+        <Button
+          onClick={() => {
+            adminApi.logout();
+            navigate({ to: "/admin/login" });
+          }}
+        >
           Sair
         </Button>
       </div>
@@ -107,8 +114,17 @@ function AdminDashboard() {
     <div className="min-h-screen bg-gradient-soft">
       <header className="border-b bg-background/70 backdrop-blur sticky top-0 z-30">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <Link to="/" className="font-bold">Rifa Solidária <span className="text-muted-foreground font-normal">/ Admin</span></Link>
-          <Button variant="ghost" size="sm" onClick={() => { adminApi.logout(); navigate({ to: "/admin/login" }); }}>
+          <Link to="/" className="font-bold">
+            Rifa Solidária <span className="text-muted-foreground font-normal">/ Admin</span>
+          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              adminApi.logout();
+              navigate({ to: "/admin/login" });
+            }}
+          >
             <LogOut className="h-4 w-4 mr-2" /> Sair
           </Button>
         </div>
@@ -116,19 +132,25 @@ function AdminDashboard() {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {loading ? (
-          <div className="text-center py-20"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+          <div className="text-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+          </div>
         ) : (
           <>
             <Stats config={config} orders={orders} />
             <Tabs defaultValue="pedidos">
               <TabsList>
                 <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
+                <TabsTrigger value="relatorios">Relatorios</TabsTrigger>
                 <TabsTrigger value="config">Configuração</TabsTrigger>
                 <TabsTrigger value="sorteio">Sorteio</TabsTrigger>
                 <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
               </TabsList>
               <TabsContent value="pedidos" className="mt-6">
                 <OrdersTable orders={orders} onChange={loadAll} />
+              </TabsContent>
+              <TabsContent value="relatorios" className="mt-6">
+                <ReportsPanel config={config} orders={orders} />
               </TabsContent>
               <TabsContent value="config" className="mt-6">
                 <ConfigForm config={config} onSaved={loadAll} />
@@ -163,8 +185,15 @@ function Stats({ config, orders }: any) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((c) => (
-        <Card key={c.label} className={`p-5 ${c.accent ? "bg-gradient-primary text-primary-foreground border-0 shadow-elegant" : ""}`}>
-          <div className={`text-xs uppercase tracking-wider ${c.accent ? "opacity-80" : "text-muted-foreground"}`}>{c.label}</div>
+        <Card
+          key={c.label}
+          className={`p-5 ${c.accent ? "bg-gradient-primary text-primary-foreground border-0 shadow-elegant" : ""}`}
+        >
+          <div
+            className={`text-xs uppercase tracking-wider ${c.accent ? "opacity-80" : "text-muted-foreground"}`}
+          >
+            {c.label}
+          </div>
           <div className="text-2xl md:text-3xl font-bold mt-1 tabular-nums">{c.value}</div>
         </Card>
       ))}
@@ -180,7 +209,13 @@ function generateSecret(length = 18) {
   return Array.from(values, (value) => SECRET_CHARS[value % SECRET_CHARS.length]).join("");
 }
 
-function UserControl({ email, onUpdated }: { email: string | null; onUpdated: (email: string) => void }) {
+function UserControl({
+  email,
+  onUpdated,
+}: {
+  email: string | null;
+  onUpdated: (email: string) => void;
+}) {
   const [currentEmail, setCurrentEmail] = useState(email ?? "");
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [form, setForm] = useState({
@@ -236,7 +271,8 @@ function UserControl({ email, onUpdated }: { email: string | null; onUpdated: (e
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.current_password) return toast.error("Digite a senha atual");
-    if (form.new_password && form.new_password !== form.confirm_password) return toast.error("As senhas nao conferem");
+    if (form.new_password && form.new_password !== form.confirm_password)
+      return toast.error("As senhas nao conferem");
     setSaving(true);
     try {
       const updated = await adminApi.updateCredentials({
@@ -265,7 +301,11 @@ function UserControl({ email, onUpdated }: { email: string | null; onUpdated: (e
   };
 
   if (loading) {
-    return <Card className="p-6"><Loader2 className="h-5 w-5 animate-spin" /></Card>;
+    return (
+      <Card className="p-6">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </Card>
+    );
   }
 
   return (
@@ -289,22 +329,47 @@ function UserControl({ email, onUpdated }: { email: string | null; onUpdated: (e
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <Label htmlFor="admin-email">E-mail admin</Label>
-            <Input id="admin-email" type="email" value={form.email} onChange={set("email")} required />
+            <Input
+              id="admin-email"
+              type="email"
+              value={form.email}
+              onChange={set("email")}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="current-password">Senha atual</Label>
-            <Input id="current-password" type="password" value={form.current_password} onChange={set("current_password")} autoComplete="current-password" required />
+            <Input
+              id="current-password"
+              type="password"
+              value={form.current_password}
+              onChange={set("current_password")}
+              autoComplete="current-password"
+              required
+            />
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
           <div>
             <Label htmlFor="new-password">Nova senha</Label>
-            <Input id="new-password" type="password" value={form.new_password} onChange={set("new_password")} autoComplete="new-password" />
+            <Input
+              id="new-password"
+              type="password"
+              value={form.new_password}
+              onChange={set("new_password")}
+              autoComplete="new-password"
+            />
           </div>
           <div>
             <Label htmlFor="confirm-new-password">Confirmar senha</Label>
-            <Input id="confirm-new-password" type="password" value={form.confirm_password} onChange={set("confirm_password")} autoComplete="new-password" />
+            <Input
+              id="confirm-new-password"
+              type="password"
+              value={form.confirm_password}
+              onChange={set("confirm_password")}
+              autoComplete="new-password"
+            />
           </div>
           <Button type="button" variant="secondary" className="self-end" onClick={generatePassword}>
             <KeyRound className="h-4 w-4 mr-2" /> Gerar
@@ -314,15 +379,30 @@ function UserControl({ email, onUpdated }: { email: string | null; onUpdated: (e
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <div>
             <Label htmlFor="recovery-key">Nova chave de recuperacao</Label>
-            <Input id="recovery-key" type="password" value={form.recovery_key} onChange={set("recovery_key")} autoComplete="off" />
+            <Input
+              id="recovery-key"
+              type="password"
+              value={form.recovery_key}
+              onChange={set("recovery_key")}
+              autoComplete="off"
+            />
           </div>
-          <Button type="button" variant="secondary" className="self-end" onClick={generateRecoveryKey}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="self-end"
+            onClick={generateRecoveryKey}
+          >
             <KeyRound className="h-4 w-4 mr-2" /> Gerar chave
           </Button>
         </div>
 
         <Button type="submit" disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserCog className="h-4 w-4 mr-2" />}
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <UserCog className="h-4 w-4 mr-2" />
+          )}
           Salvar usuario
         </Button>
       </form>
@@ -364,7 +444,12 @@ function OrdersTable({ orders, onChange }: any) {
     <Card className="p-6">
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         {["todos", "pendente", "aguardando", "confirmado", "cancelado"].map((s) => (
-          <Button key={s} size="sm" variant={filter === s ? "default" : "secondary"} onClick={() => setFilter(s)}>
+          <Button
+            key={s}
+            size="sm"
+            variant={filter === s ? "default" : "secondary"}
+            onClick={() => setFilter(s)}
+          >
             {s}
           </Button>
         ))}
@@ -383,18 +468,26 @@ function OrdersTable({ orders, onChange }: any) {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="py-10 text-center text-muted-foreground">Sem pedidos</td></tr>
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                  Sem pedidos
+                </td>
+              </tr>
             )}
             {filtered.map((o: any) => (
               <tr key={o.id} className="border-b last:border-0">
                 <td className="py-3 pr-3 font-mono text-xs">{o.codigo}</td>
                 <td className="py-3 pr-3">
                   <div className="font-medium">{o.comprador_nome}</div>
-                  <div className="text-xs text-muted-foreground">{o.email} · {o.telefone}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {[o.telefone, o.email].filter(Boolean).join(" · ") || "Sem contato informado"}
+                  </div>
                 </td>
                 <td className="py-3 pr-3 tabular-nums">{o.qtd_cotas}</td>
                 <td className="py-3 pr-3 tabular-nums">{formatBRL(o.valor_total_centavos)}</td>
-                <td className="py-3 pr-3"><StatusBadge status={o.status} /></td>
+                <td className="py-3 pr-3">
+                  <StatusBadge status={o.status} />
+                </td>
                 <td className="py-3 pr-3 text-right">
                   {(o.status === "pendente" || o.status === "aguardando") && (
                     <div className="flex gap-2 justify-end">
@@ -423,7 +516,13 @@ function StatusBadge({ status }: { status: string }) {
     aguardando: "bg-gold/20 text-gold-foreground",
     cancelado: "bg-destructive/15 text-destructive",
   };
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${map[status] ?? "bg-secondary"}`}>{status}</span>;
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-medium ${map[status] ?? "bg-secondary"}`}
+    >
+      {status}
+    </span>
+  );
 }
 
 function ConfigForm({ config, onSaved }: any) {
@@ -477,75 +576,122 @@ function ConfigForm({ config, onSaved }: any) {
 
   return (
     <>
-    <Card className="p-6 space-y-4">
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] gap-5 items-start">
-        <div className="space-y-3">
-          <div>
-            <Label>Foto do prêmio na página inicial</Label>
-            <Input
-              value={form.imagem_url ?? ""}
-              onChange={set("imagem_url")}
-              placeholder="/uploads/raffle-images/premio.jpg"
-            />
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <label className="inline-flex">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploadingImage}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void uploadPrizeImage(file);
-                }}
+      <Card className="p-6 space-y-4">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] gap-5 items-start">
+          <div className="space-y-3">
+            <div>
+              <Label>Foto do prêmio na página inicial</Label>
+              <Input
+                value={form.imagem_url ?? ""}
+                onChange={set("imagem_url")}
+                placeholder="/uploads/raffle-images/premio.jpg"
               />
-              <Button asChild disabled={uploadingImage}>
-                <span className="cursor-pointer">
-                  {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ImagePlus className="h-4 w-4 mr-2" />}
-                  {form.imagem_url ? "Trocar foto" : "Enviar foto"}
-                </span>
-              </Button>
-            </label>
-            {form.imagem_url && (
-              <Button type="button" variant="ghost" onClick={() => setForm({ ...form, imagem_url: "" })}>
-                <X className="h-4 w-4 mr-2" /> Remover
-              </Button>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void uploadPrizeImage(file);
+                  }}
+                />
+                <Button asChild disabled={uploadingImage}>
+                  <span className="cursor-pointer">
+                    {uploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <ImagePlus className="h-4 w-4 mr-2" />
+                    )}
+                    {form.imagem_url ? "Trocar foto" : "Enviar foto"}
+                  </span>
+                </Button>
+              </label>
+              {form.imagem_url && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setForm({ ...form, imagem_url: "" })}
+                >
+                  <X className="h-4 w-4 mr-2" /> Remover
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border bg-muted aspect-[3/2]">
+            {form.imagem_url ? (
+              <img
+                src={form.imagem_url}
+                alt={form.premio ?? "Prêmio"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Imagem do prêmio
+              </div>
             )}
           </div>
         </div>
-        <div className="overflow-hidden rounded-xl border bg-muted aspect-[3/2]">
-          {form.imagem_url ? (
-            <img src={form.imagem_url} alt={form.premio ?? "Prêmio"} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Imagem do prêmio
-            </div>
-          )}
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <Label>Nome da rifa</Label>
+            <Input value={form.nome ?? ""} onChange={set("nome")} />
+          </div>
+          <div>
+            <Label>Prêmio</Label>
+            <Input value={form.premio ?? ""} onChange={set("premio")} />
+          </div>
         </div>
-      </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div><Label>Nome da rifa</Label><Input value={form.nome ?? ""} onChange={set("nome")} /></div>
-        <div><Label>Prêmio</Label><Input value={form.premio ?? ""} onChange={set("premio")} /></div>
-      </div>
-      <div><Label>Descrição</Label><Textarea value={form.descricao ?? ""} onChange={set("descricao")} /></div>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div><Label>Total de cotas</Label><Input type="number" value={form.total_cotas ?? 0} onChange={set("total_cotas")} /></div>
-        <div><Label>Valor da cota (centavos)</Label><Input type="number" value={form.valor_cota_centavos ?? 0} onChange={set("valor_cota_centavos")} /></div>
-        <div><Label>Data do sorteio</Label><Input type="datetime-local" value={form.data_sorteio?.slice(0, 16) ?? ""} onChange={set("data_sorteio")} /></div>
-      </div>
-      <div className="grid md:grid-cols-3 gap-4">
-        <div><Label>Chave PIX</Label><Input value={form.pix_key ?? ""} onChange={set("pix_key")} /></div>
-        <div><Label>Nome (recebedor)</Label><Input value={form.pix_nome ?? ""} onChange={set("pix_nome")} /></div>
-        <div><Label>Cidade</Label><Input value={form.pix_cidade ?? ""} onChange={set("pix_cidade")} /></div>
-      </div>
-      <Button onClick={save} disabled={saving}>
-        {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-        Salvar
-      </Button>
-    </Card>
-    <LaunchResetPanel onReset={onSaved} />
+        <div>
+          <Label>Descrição</Label>
+          <Textarea value={form.descricao ?? ""} onChange={set("descricao")} />
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <Label>Total de cotas</Label>
+            <Input type="number" value={form.total_cotas ?? 0} onChange={set("total_cotas")} />
+          </div>
+          <div>
+            <Label>Valor da cota (centavos)</Label>
+            <Input
+              type="number"
+              value={form.valor_cota_centavos ?? 0}
+              onChange={set("valor_cota_centavos")}
+            />
+          </div>
+          <div>
+            <Label>Data do sorteio</Label>
+            <Input
+              type="datetime-local"
+              value={form.data_sorteio?.slice(0, 16) ?? ""}
+              onChange={set("data_sorteio")}
+            />
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <Label>Chave PIX</Label>
+            <Input value={form.pix_key ?? ""} onChange={set("pix_key")} />
+          </div>
+          <div>
+            <Label>Nome (recebedor)</Label>
+            <Input value={form.pix_nome ?? ""} onChange={set("pix_nome")} />
+          </div>
+          <div>
+            <Label>Cidade</Label>
+            <Input value={form.pix_cidade ?? ""} onChange={set("pix_cidade")} />
+          </div>
+        </div>
+        <Button onClick={save} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          Salvar
+        </Button>
+      </Card>
+      <LaunchResetPanel onReset={onSaved} />
     </>
   );
 }
@@ -590,16 +736,29 @@ function LaunchResetPanel({ onReset }: { onReset: () => void }) {
             <Rocket className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-primary">Preparar lançamento</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-primary">
+              Preparar lançamento
+            </div>
             <h3 className="mt-1 text-xl font-bold">Zerar testes e abrir para divulgação</h3>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <Badge variant="secondary" className="border-0 bg-success/15 text-success">Mantém prêmio e PIX</Badge>
-              <Badge variant="secondary" className="border-0 bg-success/15 text-success">Mantém foto da rifa</Badge>
-              <Badge variant="secondary" className="border-0 bg-destructive/10 text-destructive">Limpa pedidos, cotas e sorteio</Badge>
+              <Badge variant="secondary" className="border-0 bg-success/15 text-success">
+                Mantém prêmio e PIX
+              </Badge>
+              <Badge variant="secondary" className="border-0 bg-success/15 text-success">
+                Mantém foto da rifa
+              </Badge>
+              <Badge variant="secondary" className="border-0 bg-destructive/10 text-destructive">
+                Limpa pedidos, cotas e sorteio
+              </Badge>
             </div>
           </div>
         </div>
-        <Button type="button" variant="outline" className="border-primary/30 bg-background" onClick={() => setOpen(true)}>
+        <Button
+          type="button"
+          variant="outline"
+          className="border-primary/30 bg-background"
+          onClick={() => setOpen(true)}
+        >
           <RotateCcw className="h-4 w-4 mr-2" /> Preparar agora
         </Button>
       </div>
@@ -612,7 +771,8 @@ function LaunchResetPanel({ onReset }: { onReset: () => void }) {
             </div>
             <AlertDialogTitle>Confirmar preparação da rifa</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação apaga pedidos, cotas atribuídas e resultado de sorteio. A configuração, imagem do prêmio, dados PIX e uploads permanecem.
+              Esta ação apaga pedidos, cotas atribuídas e resultado de sorteio. A configuração,
+              imagem do prêmio, dados PIX e uploads permanecem.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
@@ -627,8 +787,17 @@ function LaunchResetPanel({ onReset }: { onReset: () => void }) {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={resetting}>Cancelar</AlertDialogCancel>
-            <Button type="button" variant="destructive" disabled={!canReset || resetting} onClick={prepareLaunch}>
-              {resetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!canReset || resetting}
+              onClick={prepareLaunch}
+            >
+              {resetting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RotateCcw className="h-4 w-4 mr-2" />
+              )}
               Zerar e preparar
             </Button>
           </AlertDialogFooter>
@@ -713,7 +882,9 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
     try {
       const created = await adminApi.createDraw({ modo: "cesta_digital" });
       if (timer) clearInterval(timer);
-      setRollingName(`${created.vencedor_nome ?? "Vencedor"} · ${created.vencedor_codigo ?? padCota(created.numero_sorteado)}`);
+      setRollingName(
+        `${created.vencedor_nome ?? "Vencedor"} · ${created.vencedor_codigo ?? padCota(created.numero_sorteado)}`,
+      );
       toast.success(`Sorteio realizado: ${created.vencedor_nome ?? "vencedor identificado"}`);
       window.setTimeout(() => {
         setRollingName(null);
@@ -732,7 +903,10 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
     if (!selected) return toast.error("Selecione a cota retirada da cesta");
     setRunning(true);
     try {
-      const created = await adminApi.createDraw({ modo: "papel_fisico", ticket_numero: selected.numero });
+      const created = await adminApi.createDraw({
+        modo: "papel_fisico",
+        ticket_numero: selected.numero,
+      });
       toast.success(`Vencedor registrado: ${created.vencedor_nome ?? selected.comprador_nome}`);
       onChange();
     } catch (e: any) {
@@ -793,7 +967,10 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
             </div>
           )}
           {canDraw && (
-            <Tabs value={mode} onValueChange={(value) => setMode(value as "cesta_digital" | "papel_fisico")}>
+            <Tabs
+              value={mode}
+              onValueChange={(value) => setMode(value as "cesta_digital" | "papel_fisico")}
+            >
               <TabsList className="grid h-auto w-full grid-cols-2 md:w-fit">
                 <TabsTrigger value="cesta_digital" className="gap-2">
                   <Dices className="h-4 w-4" /> Cesta digital
@@ -807,7 +984,9 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
                 <div className="rounded-xl border bg-background p-4">
                   <div className="flex min-h-[76px] items-center justify-center rounded-lg bg-secondary px-4 text-center">
                     <div>
-                      <div className="text-xs uppercase tracking-wider text-muted-foreground">Cesta nominal</div>
+                      <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                        Cesta nominal
+                      </div>
                       <div className="mt-1 text-xl font-bold">
                         {rollingName ?? "Pronto para sortear por nome e código"}
                       </div>
@@ -815,7 +994,11 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
                   </div>
                 </div>
                 <Button onClick={runDigitalDraw} disabled={running} size="lg">
-                  {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shuffle className="h-4 w-4 mr-2" />}
+                  {running ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Shuffle className="h-4 w-4 mr-2" />
+                  )}
                   Rodar cesta digital
                 </Button>
               </TabsContent>
@@ -837,7 +1020,11 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
                     />
                   </div>
                   <Button type="submit" className="self-end" disabled={searching}>
-                    {searching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                    {searching ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Search className="h-4 w-4 mr-2" />
+                    )}
                     Buscar
                   </Button>
                 </form>
@@ -850,12 +1037,16 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
                         type="button"
                         onClick={() => setSelected(item)}
                         className={`rounded-lg border p-3 text-left transition-colors ${
-                          selected?.codigo_cota === item.codigo_cota ? "border-primary bg-primary/5" : "bg-background hover:bg-secondary"
+                          selected?.codigo_cota === item.codigo_cota
+                            ? "border-primary bg-primary/5"
+                            : "bg-background hover:bg-secondary"
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="font-semibold">{item.comprador_nome}</span>
-                          <span className="font-mono text-xs text-muted-foreground">{item.codigo_cota}</span>
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {item.codigo_cota}
+                          </span>
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">
                           Pedido {item.order_codigo} · {item.telefone}
@@ -866,7 +1057,11 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
                 )}
 
                 <Button onClick={runPaperDraw} disabled={running || !selected} size="lg">
-                  {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trophy className="h-4 w-4 mr-2" />}
+                  {running ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Trophy className="h-4 w-4 mr-2" />
+                  )}
                   Registrar vencedor
                 </Button>
               </TabsContent>
@@ -877,9 +1072,15 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
         <>
           <Card className="p-6 bg-gradient-hero text-primary-foreground border-0 shadow-elegant">
             <div className="text-xs uppercase tracking-wider opacity-80">Vencedor</div>
-            <h3 className="text-3xl font-bold mt-1">{draw.vencedor_nome ?? "Sem dono identificado"}</h3>
-            <p className="opacity-90 mt-1">Código da cota: <strong>{winnerCode}</strong></p>
-            <p className="text-xs opacity-80 mt-2">Registro: {draw.seed} ({draw.fonte_seed})</p>
+            <h3 className="text-3xl font-bold mt-1">
+              {draw.vencedor_nome ?? "Sem dono identificado"}
+            </h3>
+            <p className="opacity-90 mt-1">
+              Código da cota: <strong>{winnerCode}</strong>
+            </p>
+            <p className="text-xs opacity-80 mt-2">
+              Registro: {draw.seed} ({draw.fonte_seed})
+            </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Button
                 type="button"
@@ -908,7 +1109,11 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
           <Card className="p-6">
             <h3 className="text-lg font-bold mb-3">Vídeo do sorteio</h3>
             {draw.video_url ? (
-              <video src={draw.video_url} controls className="w-full rounded-xl aspect-video bg-black mb-4" />
+              <video
+                src={draw.video_url}
+                controls
+                className="w-full rounded-xl aspect-video bg-black mb-4"
+              />
             ) : (
               <div className="rounded-xl bg-muted aspect-video flex items-center justify-center text-muted-foreground mb-4">
                 Nenhum vídeo enviado ainda
@@ -924,15 +1129,29 @@ function DrawPanel({ config, orders, draw, onChange }: any) {
                 />
                 <Button asChild disabled={uploading}>
                   <span className="cursor-pointer">
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                    {uploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-2" />
+                    )}
                     {draw.video_url ? "Trocar vídeo" : "Enviar vídeo"}
                   </span>
                 </Button>
               </label>
               <Button variant={draw.publicado ? "secondary" : "default"} onClick={togglePublish}>
-                {draw.publicado ? <><EyeOff className="h-4 w-4 mr-2" /> Despublicar</> : <><Eye className="h-4 w-4 mr-2" /> Publicar resultado</>}
+                {draw.publicado ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-2" /> Despublicar
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" /> Publicar resultado
+                  </>
+                )}
               </Button>
-              {draw.publicado && <Badge className="bg-success/15 text-success border-0">Publicado</Badge>}
+              {draw.publicado && (
+                <Badge className="bg-success/15 text-success border-0">Publicado</Badge>
+              )}
             </div>
           </Card>
         </>

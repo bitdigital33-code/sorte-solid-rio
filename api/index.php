@@ -1,8 +1,7 @@
 <?php
 declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
-header('X-Content-Type-Options: nosniff');
+send_security_headers();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -14,6 +13,23 @@ final class HttpError extends RuntimeException
     public function __construct(string $message, public int $status = 400)
     {
         parent::__construct($message);
+    }
+}
+
+function send_security_headers(): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, max-age=0');
+    header('Pragma: no-cache');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header("Content-Security-Policy: base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests");
+
+    $https = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off';
+    if ($https) {
+        header('Strict-Transport-Security: max-age=31536000');
     }
 }
 
@@ -133,6 +149,174 @@ function db(): PDO
     $pdo->exec("SET TIME ZONE 'America/Cuiaba'");
 
     return $pdo;
+}
+
+function client_ip(): string
+{
+    $candidate = trim((string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? ''));
+    return filter_var($candidate, FILTER_VALIDATE_IP) ? $candidate : 'unknown';
+}
+
+function normalize_person_key(string $value): string
+{
+    $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+    if ($ascii === false) {
+        $ascii = $value;
+    }
+    $normalized = preg_replace('/[^A-Za-z0-9]+/', ' ', strtolower(trim($ascii))) ?? strtolower(trim($ascii));
+    return preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
+}
+
+function order_contact_hash(string $nome, string $telefoneDigits): string
+{
+    $secret = (string) config_value('app_secret', 'rifa-solidaria');
+    return hash('sha256', normalize_person_key($nome) . '|' . $telefoneDigits . '|' . $secret);
+}
+
+function ensure_request_throttle_table(): void
+{
+    static $initialized = false;
+    if ($initialized) {
+        return;
+    }
+
+    db()->exec(
+        'CREATE TABLE IF NOT EXISTS public.request_throttle (
+            throttle_key TEXT PRIMARY KEY,
+            scope TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+            window_started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            blocked_until TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )'
+    );
+    db()->exec('CREATE INDEX IF NOT EXISTS idx_request_throttle_scope ON public.request_throttle(scope)');
+
+    $initialized = true;
+}
+
+function throttle_key(string $scope, string $subject): string
+{
+    return hash('sha256', $scope . '|' . strtolower(trim($subject)));
+}
+
+function throttle_timestamp(?string $value): int
+{
+    if ($value === null || trim($value) === '') {
+        return 0;
+    }
+    $timestamp = strtotime($value);
+    return $timestamp === false ? 0 : $timestamp;
+}
+
+function throttle_assert_not_blocked(string $scope, string $subject, string $message): void
+{
+    ensure_request_throttle_table();
+    $row = one(
+        'SELECT blocked_until FROM public.request_throttle WHERE throttle_key = :key LIMIT 1',
+        [':key' => throttle_key($scope, $subject)]
+    );
+    if ($row !== null && throttle_timestamp($row['blocked_until'] ?? null) > time()) {
+        fail($message, 429);
+    }
+}
+
+function throttle_bump(string $scope, string $subject, int $maxAttempts, int $windowSeconds, int $blockSeconds, string $message): void
+{
+    ensure_request_throttle_table();
+    $pdo = db();
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $key = throttle_key($scope, $subject);
+        $stmt = $pdo->prepare('SELECT * FROM public.request_throttle WHERE throttle_key = :key FOR UPDATE');
+        $stmt->execute([':key' => $key]);
+        $row = $stmt->fetch();
+        $row = is_array($row) ? $row : null;
+
+        $now = time();
+        $windowStarted = $now;
+        $attempts = 0;
+        $blockedUntil = 0;
+
+        if ($row !== null) {
+            $windowStarted = throttle_timestamp($row['window_started_at'] ?? null) ?: $now;
+            $blockedUntil = throttle_timestamp($row['blocked_until'] ?? null);
+            if (($now - $windowStarted) >= $windowSeconds) {
+                $attempts = 0;
+                $windowStarted = $now;
+                $blockedUntil = 0;
+            } else {
+                $attempts = (int) ($row['attempts'] ?? 0);
+            }
+        }
+
+        if ($blockedUntil > $now) {
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
+            fail($message, 429);
+        }
+
+        $attempts++;
+        $blockedUntilIso = null;
+        if ($attempts >= $maxAttempts) {
+            $blockedUntilIso = date('c', $now + $blockSeconds);
+        }
+
+        if ($row === null) {
+            $insert = $pdo->prepare(
+                'INSERT INTO public.request_throttle (throttle_key, scope, attempts, window_started_at, blocked_until, updated_at)
+                 VALUES (:key, :scope, :attempts, :window_started_at, :blocked_until, now())'
+            );
+            $insert->execute([
+                ':key' => $key,
+                ':scope' => $scope,
+                ':attempts' => $attempts,
+                ':window_started_at' => date('c', $windowStarted),
+                ':blocked_until' => $blockedUntilIso,
+            ]);
+        } else {
+            $update = $pdo->prepare(
+                'UPDATE public.request_throttle
+                 SET attempts = :attempts,
+                     window_started_at = :window_started_at,
+                     blocked_until = :blocked_until,
+                     updated_at = now()
+                 WHERE throttle_key = :key'
+            );
+            $update->execute([
+                ':key' => $key,
+                ':attempts' => $attempts,
+                ':window_started_at' => date('c', $windowStarted),
+                ':blocked_until' => $blockedUntilIso,
+            ]);
+        }
+
+        if ($ownsTransaction) {
+            $pdo->commit();
+        }
+
+        if ($blockedUntilIso !== null) {
+            fail($message, 429);
+        }
+    } catch (Throwable $e) {
+        if ($ownsTransaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+function throttle_clear(string $scope, string $subject): void
+{
+    ensure_request_throttle_table();
+    $stmt = db()->prepare('DELETE FROM public.request_throttle WHERE throttle_key = :key');
+    $stmt->execute([':key' => throttle_key($scope, $subject)]);
 }
 
 function one(string $sql, array $params = []): ?array
@@ -275,6 +459,14 @@ function base64url_decode_data(string $value): string|false
     return base64_decode($padded, true);
 }
 
+function admin_token_fingerprint(?string $email = null, ?string $passwordHash = null, ?string $resetHash = null): string
+{
+    $resolvedEmail = strtolower(trim((string) ($email ?? config_value('admin_email', ''))));
+    $resolvedPasswordHash = (string) ($passwordHash ?? config_value('admin_password_hash', ''));
+    $resolvedResetHash = (string) ($resetHash ?? config_value('admin_reset_key_hash', ''));
+    return substr(hash('sha256', $resolvedEmail . '|' . $resolvedPasswordHash . '|' . $resolvedResetHash), 0, 32);
+}
+
 function make_token(string $email): string
 {
     $secret = (string) config_value('app_secret', '');
@@ -284,6 +476,7 @@ function make_token(string $email): string
     $payload = base64url_encode_data(json_encode([
         'sub' => 'admin',
         'email' => $email,
+        'ver' => admin_token_fingerprint($email),
         'exp' => time() + 8 * 60 * 60,
     ], JSON_UNESCAPED_SLASHES));
     $sig = base64url_encode_data(hash_hmac('sha256', $payload, $secret, true));
@@ -307,6 +500,9 @@ function verify_token(?string $token): array
     $data = $json === false ? null : json_decode($json, true);
     if (!is_array($data) || (int) ($data['exp'] ?? 0) < time()) {
         fail('Sessao expirada.', 401);
+    }
+    if (!hash_equals(admin_token_fingerprint(), (string) ($data['ver'] ?? ''))) {
+        fail('Sessao expirada. Entre novamente.', 401);
     }
     return $data;
 }
@@ -509,10 +705,11 @@ function create_order(): void
     $input = read_json();
     $qty = (int) ($input['qtd_cotas'] ?? 0);
     $nome = trim((string) ($input['comprador_nome'] ?? ''));
-    $cpfHash = strtolower(trim((string) ($input['cpf_hash'] ?? '')));
-    $cpfMascarado = trim((string) ($input['cpf_mascarado'] ?? ''));
     $telefone = trim((string) ($input['telefone'] ?? ''));
     $email = strtolower(trim((string) ($input['email'] ?? '')));
+    $cpfHashInput = strtolower(trim((string) ($input['cpf_hash'] ?? '')));
+    $cpfMascaradoInput = trim((string) ($input['cpf_mascarado'] ?? ''));
+    $telefoneDigits = preg_replace('/\D/', '', $telefone) ?? '';
 
     if ($qty < 1 || $qty > 1000) {
         fail('Quantidade de cotas invalida.');
@@ -520,18 +717,25 @@ function create_order(): void
     if (strlen($nome) < 3 || strlen($nome) > 120) {
         fail('Nome invalido.');
     }
-    if (!preg_match('/^[a-f0-9]{64}$/', $cpfHash)) {
-        fail('CPF invalido.');
-    }
-    if ($cpfMascarado === '' || strlen($cpfMascarado) > 20) {
-        fail('CPF invalido.');
-    }
-    if (strlen(preg_replace('/\D/', '', $telefone) ?? '') < 10) {
+    if (strlen($telefoneDigits) < 10 || strlen($telefoneDigits) > 11) {
         fail('Telefone invalido.');
     }
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         fail('E-mail invalido.');
     }
+
+    $contactHash = order_contact_hash($nome, $telefoneDigits);
+    $cpfHash = preg_match('/^[a-f0-9]{64}$/', $cpfHashInput) ? $cpfHashInput : $contactHash;
+    $cpfMascarado = ($cpfMascaradoInput !== '' && strlen($cpfMascaradoInput) <= 20) ? $cpfMascaradoInput : '';
+
+    $orderThrottleMessage = 'Muitos pedidos em pouco tempo. Aguarde alguns minutos e tente novamente.';
+    $ip = client_ip();
+    throttle_assert_not_blocked('public_order_ip', $ip, $orderThrottleMessage);
+    throttle_assert_not_blocked('public_order_phone', $telefoneDigits, $orderThrottleMessage);
+    throttle_assert_not_blocked('public_order_contact', $contactHash, $orderThrottleMessage);
+    throttle_bump('public_order_ip', $ip, 12, 10 * 60, 15 * 60, $orderThrottleMessage);
+    throttle_bump('public_order_phone', $telefoneDigits, 8, 10 * 60, 15 * 60, $orderThrottleMessage);
+    throttle_bump('public_order_contact', $contactHash, 5, 30 * 60, 30 * 60, $orderThrottleMessage);
 
     $config = get_config_row();
     $total = $qty * (int) $config['valor_cota_centavos'];
@@ -644,10 +848,19 @@ function login(): void
     if ($adminEmail === '' || $hash === '') {
         fail('Admin nao configurado.', 500);
     }
+    $loginThrottleMessage = 'Muitas tentativas de login. Aguarde 30 minutos antes de tentar novamente.';
+    $ip = client_ip();
+    throttle_assert_not_blocked('admin_login_ip', $ip, $loginThrottleMessage);
+    throttle_assert_not_blocked('admin_login_email', $email, $loginThrottleMessage);
     if (!hash_equals($adminEmail, $email) || !password_verify($password, $hash)) {
+        usleep(250000);
+        throttle_bump('admin_login_ip', $ip, 10, 15 * 60, 30 * 60, $loginThrottleMessage);
+        throttle_bump('admin_login_email', $email, 5, 15 * 60, 30 * 60, $loginThrottleMessage);
         fail('Credenciais invalidas.', 401);
     }
 
+    throttle_clear('admin_login_ip', $ip);
+    throttle_clear('admin_login_email', $email);
     respond(['token' => make_token($adminEmail), 'email' => $adminEmail]);
 }
 
@@ -768,14 +981,22 @@ function reset_admin_password(): void
     if ($adminEmail === '' || $resetHash === '') {
         fail('Recuperacao de senha nao configurada.', 400);
     }
+    $resetThrottleMessage = 'Muitas tentativas de recuperacao. Aguarde 1 hora antes de tentar novamente.';
+    $ip = client_ip();
+    throttle_assert_not_blocked('admin_reset_ip', $ip, $resetThrottleMessage);
+    throttle_assert_not_blocked('admin_reset_email', $email, $resetThrottleMessage);
     if (!hash_equals($adminEmail, $email) || !password_verify($recoveryKey, $resetHash)) {
         usleep(300000);
+        throttle_bump('admin_reset_ip', $ip, 5, 30 * 60, 60 * 60, $resetThrottleMessage);
+        throttle_bump('admin_reset_email', $email, 3, 30 * 60, 60 * 60, $resetThrottleMessage);
         fail('Dados de recuperacao invalidos.', 401);
     }
     if (!hash_equals($newPassword, $confirmPassword)) {
         fail('As senhas nao conferem.');
     }
 
+    throttle_clear('admin_reset_ip', $ip);
+    throttle_clear('admin_reset_email', $email);
     write_app_config([
         'admin_password_hash' => password_hash(require_strong_password($newPassword), PASSWORD_DEFAULT),
     ]);
@@ -1168,6 +1389,10 @@ function upload_video(): void
     $file = $_FILES['file'];
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
         fail('Falha no upload.');
+    }
+    $maxVideoMb = max(16, (int) config_value('video_max_upload_mb', 64));
+    if ((int) ($file['size'] ?? 0) > $maxVideoMb * 1024 * 1024) {
+        fail("Video muito grande. Envie ate {$maxVideoMb} MB.");
     }
 
     $tmp = (string) $file['tmp_name'];

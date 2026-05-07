@@ -400,12 +400,9 @@ function HomePage() {
           <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/90 bg-emerald-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-emerald-50 shadow-lg shadow-emerald-950/15">
               <span className="h-2 w-2 rounded-full bg-emerald-300" />
-              Sistema v1.0
+              Sistema Bitdigital v1.0
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <span className="rounded-full border border-emerald-200/80 bg-white/85 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-sm backdrop-blur">
-                Ação entre Amigos
-              </span>
               <span className="rounded-full border border-emerald-200/80 bg-white/85 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-sm backdrop-blur">
                 Pagamento via PIX
               </span>
@@ -413,9 +410,6 @@ function HomePage() {
                 Controle automático de cotas
               </span>
             </div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-emerald-900/70">
-              Plataforma oficial da Ação entre Amigos
-            </p>
           </div>
         </div>
       </footer>

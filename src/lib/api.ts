@@ -63,6 +63,7 @@ export interface AdminCredentials {
 }
 
 const TOKEN_KEY = "rifa_admin_token";
+const LEGACY_TOKEN_KEY = TOKEN_KEY;
 
 const ENCODING_REPAIRS: Array<[RegExp, string]> = [
   [/A\?\?o/gi, "Ação"],
@@ -105,14 +106,41 @@ function endpoint(action: string, params: Record<string, string> = {}) {
     typeof window !== "undefined" && window.location.pathname.startsWith("/rifasolidaria/")
       ? "/rifasolidaria/api/index.php"
       : "/api/index.php";
-  const url = new URL(configured || fallback, typeof window === "undefined" ? "http://localhost" : window.location.origin);
+  const url = new URL(
+    configured || fallback,
+    typeof window === "undefined" ? "http://localhost" : window.location.origin,
+  );
   url.searchParams.set("action", action);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   return url.pathname + url.search;
 }
 
+function setAdminToken(token: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(TOKEN_KEY, token);
+  window.localStorage.removeItem(LEGACY_TOKEN_KEY);
+}
+
+function clearAdminToken() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(LEGACY_TOKEN_KEY);
+}
+
 function adminToken() {
-  return typeof window === "undefined" ? null : localStorage.getItem(TOKEN_KEY);
+  if (typeof window === "undefined") return null;
+
+  const current = window.sessionStorage.getItem(TOKEN_KEY);
+  if (current) return current;
+
+  const legacy = window.localStorage.getItem(LEGACY_TOKEN_KEY);
+  if (legacy) {
+    window.sessionStorage.setItem(TOKEN_KEY, legacy);
+    window.localStorage.removeItem(LEGACY_TOKEN_KEY);
+    return legacy;
+  }
+
+  return null;
 }
 
 async function request<T>(
@@ -134,41 +162,54 @@ async function request<T>(
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (options.auth && response.status === 401) {
+      clearAdminToken();
+    }
     throw new Error(body.error || "Erro ao conectar com o servidor");
   }
   return normalizeApiData(body.data as T);
 }
 
 export const api = {
-  summary: () => request<{ config: RaffleConfig; sold: number; draw: DrawResult | null }>("summary"),
+  summary: () =>
+    request<{ config: RaffleConfig; sold: number; draw: DrawResult | null }>("summary"),
   config: () => request<RaffleConfig>("config"),
   createOrder: (payload: {
     comprador_nome: string;
-    cpf_hash: string;
-    cpf_mascarado: string;
     telefone: string;
     email?: string;
     qtd_cotas: number;
   }) => request<Order>("create_order", { method: "POST", body: JSON.stringify(payload) }),
   paymentOrder: (id: string) => request<Order | null>("payment_order", { params: { id } }),
-  markPending: (id: string) => request<{ id: string; status: string }>("mark_pending", { method: "POST", body: JSON.stringify({ id }) }),
+  markPending: (id: string) =>
+    request<{ id: string; status: string }>("mark_pending", {
+      method: "POST",
+      body: JSON.stringify({ id }),
+    }),
   receipt: (token: string) =>
-    request<{ order: Order | null; tickets: number[]; draw: DrawResult | null }>("receipt", { params: { token } }),
+    request<{ order: Order | null; tickets: number[]; draw: DrawResult | null }>("receipt", {
+      params: { token },
+    }),
   result: () => request<{ draw: DrawResult | null; config: RaffleConfig }>("result"),
 };
 
 export const adminApi = {
   getToken: adminToken,
-  logout: () => localStorage.removeItem(TOKEN_KEY),
+  logout: clearAdminToken,
   login: async (email: string, password: string) => {
     const session = await request<{ token: string; email: string }>("login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    localStorage.setItem(TOKEN_KEY, session.token);
+    setAdminToken(session.token);
     return session;
   },
-  resetPassword: (payload: { email: string; recovery_key: string; new_password: string; confirm_password: string }) =>
+  resetPassword: (payload: {
+    email: string;
+    recovery_key: string;
+    new_password: string;
+    confirm_password: string;
+  }) =>
     request<{ email: string }>("reset_admin_password", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -187,12 +228,19 @@ export const adminApi = {
       auth: true,
       body: JSON.stringify(payload),
     });
-    if (credentials.token) localStorage.setItem(TOKEN_KEY, credentials.token);
+    if (credentials.token) setAdminToken(credentials.token);
     return credentials;
   },
-  dashboard: () => request<{ config: RaffleConfig; orders: Order[]; draw: DrawResult | null }>("admin_data", { auth: true }),
+  dashboard: () =>
+    request<{ config: RaffleConfig; orders: Order[]; draw: DrawResult | null }>("admin_data", {
+      auth: true,
+    }),
   updateConfig: (payload: Partial<RaffleConfig>) =>
-    request<RaffleConfig>("update_config", { method: "POST", auth: true, body: JSON.stringify(payload) }),
+    request<RaffleConfig>("update_config", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify(payload),
+    }),
   confirmOrder: (id: string) =>
     request<{ ok: boolean; email_informado?: boolean; email_enviado?: boolean }>("confirm_order", {
       method: "POST",
@@ -200,19 +248,39 @@ export const adminApi = {
       body: JSON.stringify({ id }),
     }),
   cancelOrder: (id: string) =>
-    request<{ id: string; status: string }>("cancel_order", { method: "POST", auth: true, body: JSON.stringify({ id }) }),
-  resetRaffle: (confirmacao: string) =>
-    request<{ ok: boolean; removidos: { pedidos: number; cotas: number; resultados: number } }>("reset_raffle", {
+    request<{ id: string; status: string }>("cancel_order", {
       method: "POST",
       auth: true,
-      body: JSON.stringify({ confirmacao }),
+      body: JSON.stringify({ id }),
     }),
+  resetRaffle: (confirmacao: string) =>
+    request<{ ok: boolean; removidos: { pedidos: number; cotas: number; resultados: number } }>(
+      "reset_raffle",
+      {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ confirmacao }),
+      },
+    ),
   searchTickets: (query: string) =>
     request<TicketCandidate[]>("search_tickets", { params: { q: query }, auth: true }),
-  createDraw: (payload: { seed?: string; fonte_seed?: string; modo?: "cesta_digital" | "papel_fisico" | "seed_publica"; ticket_numero?: number }) =>
-    request<DrawResult>("create_draw", { method: "POST", auth: true, body: JSON.stringify(payload) }),
+  createDraw: (payload: {
+    seed?: string;
+    fonte_seed?: string;
+    modo?: "cesta_digital" | "papel_fisico" | "seed_publica";
+    ticket_numero?: number;
+  }) =>
+    request<DrawResult>("create_draw", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify(payload),
+    }),
   togglePublish: (id: string, publicado: boolean) =>
-    request<DrawResult>("toggle_publish", { method: "POST", auth: true, body: JSON.stringify({ id, publicado }) }),
+    request<DrawResult>("toggle_publish", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ id, publicado }),
+    }),
   uploadPrizeImage: (file: File) => {
     const data = new FormData();
     data.set("file", file);

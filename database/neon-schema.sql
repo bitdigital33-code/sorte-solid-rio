@@ -81,11 +81,22 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.request_throttle (
+  throttle_key TEXT PRIMARY KEY,
+  scope TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  window_started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  blocked_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_share_token ON public.orders(share_token);
 CREATE INDEX IF NOT EXISTS idx_tickets_order_id ON public.tickets(order_id);
 CREATE INDEX IF NOT EXISTS idx_draw_result_publicado ON public.draw_result(publicado);
+CREATE INDEX IF NOT EXISTS idx_request_throttle_scope ON public.request_throttle(scope);
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS trigger

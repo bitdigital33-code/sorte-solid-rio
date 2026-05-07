@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ArrowLeft, CheckCircle2, Clock, Ticket, Trophy } from "lucide-react";
+
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle2, Clock, Trophy, Ticket } from "lucide-react";
-import { formatBRL } from "@/lib/raffle-utils";
 import { api, type DrawResult, type Order } from "@/lib/api";
+import { formatBRL } from "@/lib/raffle-utils";
 
 export const Route = createFileRoute("/comprovante/$token")({
   component: ComprovantePage,
@@ -30,30 +31,40 @@ function ComprovantePage() {
     })();
   }, [token]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando…</div>;
-  if (!order)
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  }
+
+  if (!order) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p>Comprovante não encontrado.</p>
-        <Link to="/" className="text-primary underline">Voltar</Link>
+        <p>Comprovante nao encontrado.</p>
+        <Link to="/" className="text-primary underline">
+          Voltar
+        </Link>
       </div>
     );
+  }
 
   const won = draw && tickets.includes(draw.numero_sorteado);
+  const receiptDetails = [order.comprador_nome, order.telefone].filter(Boolean).join(" · ");
 
   return (
     <div className="min-h-screen bg-gradient-soft">
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft className="h-4 w-4" /> Início
+      <div className="container mx-auto max-w-2xl px-4 py-8">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Inicio
         </Link>
 
-        <Card className="p-6 md:p-10 shadow-card">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider">Comprovante</div>
-          <h1 className="text-2xl md:text-3xl font-bold mb-1">{order.codigo}</h1>
-          <p className="text-muted-foreground mb-6">{order.comprador_nome} · {order.cpf_mascarado}</p>
+        <Card className="p-6 shadow-card md:p-10">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Comprovante</div>
+          <h1 className="mb-1 text-2xl font-bold md:text-3xl">{order.codigo}</h1>
+          <p className="mb-6 text-muted-foreground">{receiptDetails || order.comprador_nome}</p>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-secondary p-4">
               <div className="text-xs text-muted-foreground">Cotas</div>
               <div className="text-2xl font-bold">{order.qtd_cotas}</div>
@@ -66,19 +77,20 @@ function ComprovantePage() {
 
           <div className="mb-6">
             {order.status === "confirmado" ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-success/15 text-success px-3 py-1.5 text-sm font-medium">
+              <div className="inline-flex items-center gap-2 rounded-full bg-success/15 px-3 py-1.5 text-sm font-medium text-success">
                 <CheckCircle2 className="h-4 w-4" /> Pagamento confirmado
               </div>
             ) : (
-              <div className="inline-flex items-center gap-2 rounded-full bg-gold/20 text-gold-foreground px-3 py-1.5 text-sm font-medium">
-                <Clock className="h-4 w-4" /> {order.status === "aguardando" ? "Aguardando confirmação" : "Pendente"}
+              <div className="inline-flex items-center gap-2 rounded-full bg-gold/20 px-3 py-1.5 text-sm font-medium text-gold-foreground">
+                <Clock className="h-4 w-4" />{" "}
+                {order.status === "aguardando" ? "Aguardando confirmacao" : "Pendente"}
               </div>
             )}
           </div>
 
           {tickets.length > 0 && (
             <div className="mb-6">
-              <div className="flex items-center gap-2 text-sm font-medium mb-2">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                 <Ticket className="h-4 w-4 text-primary" /> Suas cotas
               </div>
               <div className="flex flex-wrap gap-2">
@@ -100,16 +112,18 @@ function ComprovantePage() {
 
           {won && (
             <div className="rounded-2xl bg-gradient-hero p-6 text-primary-foreground">
-              <div className="flex items-center gap-2 font-semibold mb-1">
-                <Trophy className="h-5 w-5" /> PARABÉNS, VOCÊ GANHOU!
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <Trophy className="h-5 w-5" /> PARABENS, VOCE GANHOU!
               </div>
-              <p className="text-sm opacity-90">Entraremos em contato pelos dados do cadastro.</p>
+              <p className="text-sm opacity-90">
+                Entraremos em contato pelo telefone informado no pedido.
+              </p>
             </div>
           )}
 
           {tickets.length === 0 && order.status !== "confirmado" && (
             <p className="text-sm text-muted-foreground">
-              Os números das cotas serão exibidos aqui assim que o pagamento for confirmado.
+              Os numeros das cotas serao exibidos aqui assim que o pagamento for confirmado.
             </p>
           )}
         </Card>
