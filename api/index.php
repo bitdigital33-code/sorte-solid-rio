@@ -70,40 +70,8 @@ function write_app_config(array $updates): array
 function respond(mixed $data, int $status = 200): never
 {
     http_response_code($status);
-    echo json_encode(['data' => repair_common_encoding_artifacts($data)], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    echo json_encode(['data' => $data], JSON_UNESCAPED_SLASHES);
     exit;
-}
-
-function repair_common_encoding_artifacts(mixed $value): mixed
-{
-    if (is_string($value)) {
-        $patterns = [
-            '/A\?\?o/u',
-            '/cont\?m/u',
-            '/cora\?\?o/u',
-            '/pel\?cia/u',
-            '/lan\?amento/u',
-            '/configura\?\?o/u',
-        ];
-        $replacements = [
-            'Ação',
-            'contém',
-            'coração',
-            'pelúcia',
-            'lançamento',
-            'configuração',
-        ];
-
-        return preg_replace($patterns, $replacements, $value) ?? $value;
-    }
-
-    if (is_array($value)) {
-        foreach ($value as $key => $item) {
-            $value[$key] = repair_common_encoding_artifacts($item);
-        }
-    }
-
-    return $value;
 }
 
 function fail(string $message, int $status = 400): never
