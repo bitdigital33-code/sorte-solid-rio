@@ -64,6 +64,41 @@ export interface AdminCredentials {
 
 const TOKEN_KEY = "rifa_admin_token";
 
+const ENCODING_REPAIRS: Array<[RegExp, string]> = [
+  [/A\?\?o/gi, "Ação"],
+  [/cont\?m/gi, "contém"],
+  [/cora\?\?o/gi, "coração"],
+  [/pel\?cia/gi, "pelúcia"],
+  [/lan\?amento/gi, "lançamento"],
+  [/configura\?\?o/gi, "configuração"],
+];
+
+function repairEncodingArtifacts(value: string) {
+  let repaired = value;
+  for (const [pattern, replacement] of ENCODING_REPAIRS) {
+    repaired = repaired.replace(pattern, replacement);
+  }
+  return repaired;
+}
+
+function normalizeApiData<T>(value: T): T {
+  if (typeof value === "string") {
+    return repairEncodingArtifacts(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeApiData(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, normalizeApiData(item)]),
+    ) as T;
+  }
+
+  return value;
+}
+
 function endpoint(action: string, params: Record<string, string> = {}) {
   const configured = import.meta.env.VITE_API_ENDPOINT as string | undefined;
   const fallback =
@@ -101,7 +136,7 @@ async function request<T>(
   if (!response.ok) {
     throw new Error(body.error || "Erro ao conectar com o servidor");
   }
-  return body.data as T;
+  return normalizeApiData(body.data as T);
 }
 
 export const api = {

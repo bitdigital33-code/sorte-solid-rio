@@ -122,7 +122,7 @@ function prizeTextFor(item: string) {
 function formatHeroDescription(value?: string | null) {
   const fallback = "Cada cota custa apenas R$ 10,00. Pague pelo PIX e ajude nossa causa.";
   const text = fixCommonEncodingArtifacts(value?.trim() || fallback).replace(/\r/g, "");
-  const marker = text.match(/^(.*?)\s*(A cesta cont(?:[eé?]|Ã©)m:?)\s*([\s\S]*)$/i);
+  const marker = text.match(/^(.*?)\s*(A cesta cont(?:e|é|\?)m:?)\s*([\s\S]*)$/i);
 
   if (marker && marker[3]?.trim()) {
     return {
