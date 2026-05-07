@@ -86,7 +86,7 @@ function CheckoutPage() {
 
         <h1 className="text-3xl font-bold mb-2">Seus dados</h1>
         <p className="text-muted-foreground mb-8">
-          Preencha para gerar seu PIX. Tratamos seus dados conforme a LGPD.
+          Preencha para gerar seu PIX.
         </p>
 
         <div className="grid md:grid-cols-[1fr_320px] gap-6">
