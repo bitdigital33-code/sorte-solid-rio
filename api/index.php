@@ -529,7 +529,7 @@ function create_order(): void
     if (strlen(preg_replace('/\D/', '', $telefone) ?? '') < 10) {
         fail('Telefone invalido.');
     }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         fail('E-mail invalido.');
     }
 
@@ -927,7 +927,8 @@ function confirm_order(): void
         $order = cast_row($order);
         if ($order['status'] === 'confirmado') {
             $pdo->commit();
-            respond(['ok' => true]);
+            $hasEmail = trim((string) ($order['email'] ?? '')) !== '';
+            respond(['ok' => true, 'email_informado' => $hasEmail]);
         }
 
         $config = get_config_row();
@@ -960,8 +961,9 @@ function confirm_order(): void
 
         $pdo->commit();
 
-        $emailSent = send_order_confirmation_email($order, $assignedTickets, $config);
-        respond(['ok' => true, 'email_enviado' => $emailSent]);
+        $hasEmail = trim((string) ($order['email'] ?? '')) !== '';
+        $emailSent = $hasEmail ? send_order_confirmation_email($order, $assignedTickets, $config) : false;
+        respond(['ok' => true, 'email_informado' => $hasEmail, 'email_enviado' => $emailSent]);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

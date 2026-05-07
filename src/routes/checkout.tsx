@@ -50,7 +50,7 @@ function CheckoutPage() {
     if (!nome.trim() || nome.trim().length < 3) return toast.error("Informe seu nome completo");
     if (!isValidCPF(cpf)) return toast.error("CPF inválido");
     if (tel.replace(/\D/g, "").length < 10) return toast.error("Telefone inválido");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("E-mail inválido");
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return toast.error("E-mail inválido");
     if (!config) return;
 
     setLoading(true);
@@ -118,15 +118,16 @@ function CheckoutPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="email">E-mail</Label>
+                <Label htmlFor="email">E-mail opcional</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   maxLength={255}
-                  required
+                  placeholder="Se quiser, preencha"
                 />
+                <p className="mt-2 text-xs text-muted-foreground">Se quiser, preencha para receber contato por e-mail.</p>
               </div>
 
               <Button type="submit" size="lg" className="w-full h-12" disabled={loading}>

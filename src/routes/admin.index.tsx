@@ -341,7 +341,7 @@ function OrdersTable({ orders, onChange }: any) {
     try {
       const result = await adminApi.confirmOrder(id);
       toast.success("Pedido confirmado e cotas atribuídas");
-      if (!result.email_enviado) {
+      if (result.email_informado && !result.email_enviado) {
         toast.error("O servidor confirmou o pedido, mas nao conseguiu enviar o e-mail.");
       }
       onChange();

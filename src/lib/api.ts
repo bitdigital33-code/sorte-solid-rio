@@ -147,7 +147,7 @@ export const api = {
     cpf_hash: string;
     cpf_mascarado: string;
     telefone: string;
-    email: string;
+    email?: string;
     qtd_cotas: number;
   }) => request<Order>("create_order", { method: "POST", body: JSON.stringify(payload) }),
   paymentOrder: (id: string) => request<Order | null>("payment_order", { params: { id } }),
@@ -194,7 +194,11 @@ export const adminApi = {
   updateConfig: (payload: Partial<RaffleConfig>) =>
     request<RaffleConfig>("update_config", { method: "POST", auth: true, body: JSON.stringify(payload) }),
   confirmOrder: (id: string) =>
-    request<{ ok: boolean; email_enviado?: boolean }>("confirm_order", { method: "POST", auth: true, body: JSON.stringify({ id }) }),
+    request<{ ok: boolean; email_informado?: boolean; email_enviado?: boolean }>("confirm_order", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ id }),
+    }),
   cancelOrder: (id: string) =>
     request<{ id: string; status: string }>("cancel_order", { method: "POST", auth: true, body: JSON.stringify({ id }) }),
   resetRaffle: (confirmacao: string) =>
